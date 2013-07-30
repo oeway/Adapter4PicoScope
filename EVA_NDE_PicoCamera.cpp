@@ -36,6 +36,8 @@
 #include <iostream>
 #include "pico\PS3000Acon.c"
 #define MAX_SAMPLE_LENGTH 3000000
+#define PICO_RUM_TIME_OUT 5000
+#define WAIT_FOR_TRIGGER_FAIL_COUNT 2
 using namespace std;
 const double CEVA_NDE_PicoCamera::nominalPixelSizeUm_ = 1.0;
 double g_IntensityFactor_ = 1.0;
@@ -484,10 +486,14 @@ int CEVA_NDE_PicoCamera::SnapImage()
    unsigned short* pBuf = (unsigned short*) const_cast<unsigned char*>(img_.GetPixels());
 	for (int k=0; k<img_.Height(); k++)
 { 
-				 
-  	if(picoRunBlock(&unit,sampleOffset_,cameraCCDXSize_))
-	return DEVICE_ERR;
-
+	int retryCount =0;
+	int ret = DEVICE_ERR;			 
+  	while(ret != DEVICE_OK && retryCount++ < WAIT_FOR_TRIGGER_FAIL_COUNT){
+		ret = picoRunBlock(&unit,sampleOffset_,cameraCCDXSize_,PICO_RUM_TIME_OUT);
+		//
+	}
+	if(ret != DEVICE_OK)
+		return DEVICE_SNAP_IMAGE_FAILED;
    //void* pBuf = const_cast<void*>((void*)buffers);
    //img_.SetPixels(pBuf);
  //     MMThreadGuard g(imgPixelsLock_);
@@ -942,7 +948,7 @@ int CEVA_NDE_PicoCamera::ThreadRun (MM::MMTime startTime)
    if (!fastImage_)
    {
 		   //CollectBlockImmediate(&unit);
-  		if(picoRunBlock(&unit,sampleOffset_,cameraCCDXSize_))
+  		if(picoRunBlock(&unit,sampleOffset_,cameraCCDXSize_,PICO_RUM_TIME_OUT))
 		return DEVICE_ERR;
 	   //void* pBuf = const_cast<void*>((void*)buffers);
 	   //img_.SetPixels(pBuf);
