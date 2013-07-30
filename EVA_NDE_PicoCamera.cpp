@@ -174,7 +174,7 @@ CEVA_NDE_PicoCamera::CEVA_NDE_PicoCamera() :
    sequenceIndex_(0),
 	binSize_(1),
 	cameraCCDXSize_(512),//BUFFER_SIZE/2),
-	cameraCCDYSize_(200),
+	cameraCCDYSize_(1),
    ccdT_ (0.0),
    nComponents_(1),
    pEVA_NDE_PicoResourceLock_(0),
@@ -476,11 +476,7 @@ int CEVA_NDE_PicoCamera::SnapImage()
 	++callCounter;
 
    MM::MMTime startTime = GetCurrentMMTime();
-   double exp = GetExposure();
-   if (sequenceRunning_ && IsCapturing()) 
-   {
-      exp = GetSequenceExposure();
-   }
+
    //picoInitBlock(&unit);
   // CollectBlockImmediate(&unit); 
    unsigned short* pBuf = (unsigned short*) const_cast<unsigned char*>(img_.GetPixels());
@@ -497,7 +493,6 @@ int CEVA_NDE_PicoCamera::SnapImage()
    //void* pBuf = const_cast<void*>((void*)buffers);
    //img_.SetPixels(pBuf);
  //     MMThreadGuard g(imgPixelsLock_);
-
 
      try
 	{
@@ -517,21 +512,6 @@ int CEVA_NDE_PicoCamera::SnapImage()
    //GenerateSyntheticImage(img_, exp);
  }
 
-   MM::MMTime s0(0,0);
-   if( s0 < startTime )
-   {
-      while (exp > (GetCurrentMMTime() - startTime).getMsec())
-      {
-         CDeviceUtils::SleepMs(1);
-      }		
-   }
-   else
-   {
-      std::cerr << "You are operating this device adapter without setting the core callback, timing functions aren't yet available" << std::endl;
-      // called without the core callback probably in off line test program
-      // need way to build the core in the test program
-
-   }
    readoutStartTime_ = GetCurrentMMTime();
 
    return DEVICE_OK;
@@ -936,45 +916,7 @@ int CEVA_NDE_PicoCamera::ThreadRun (MM::MMTime startTime)
 
    int ret=DEVICE_ERR;
    
-   // Trigger
-   if (triggerDevice_.length() > 0) {
-      MM::Device* triggerDev = GetDevice(triggerDevice_.c_str());
-      if (triggerDev != 0) {
-      	LogMessage("trigger requested");
-      	triggerDev->SetProperty("Trigger","+");
-      }
-   }
-   
-   if (!fastImage_)
-   {
-		   //CollectBlockImmediate(&unit);
-  		if(picoRunBlock(&unit,sampleOffset_,cameraCCDXSize_,PICO_RUM_TIME_OUT))
-		return DEVICE_ERR;
-	   //void* pBuf = const_cast<void*>((void*)buffers);
-	   //img_.SetPixels(pBuf);
-	 //     MMThreadGuard g(imgPixelsLock_);
-
-		  unsigned short* pBuf = (unsigned short*) const_cast<unsigned char*>(img_.GetPixels());
-		 try
-		{
-			  for (int j=0; j<img_.Width(); j++)
-			  {
-				 for (int k=0; k<img_.Height(); k++)
-				 {
-					long lIndex = img_.Width()*k + j;
-
-					*(pBuf + lIndex) = (unsigned short)(32768+buffers[k][j+sampleOffset_]);
-			
-				 }
-					//printf("%ld:%d,",lIndex,*(pBuf + lIndex));
-			  }
-			 //printf("\n");
-		  }	
-		 catch(...)
-		{
-			 LogMessage("memory overflow!", false);
-		}
-   }
+ SnapImage();
 
    ret = InsertImage();
      
