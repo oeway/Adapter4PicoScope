@@ -480,23 +480,26 @@ int CEVA_NDE_PicoCamera::SnapImage()
    //picoInitBlock(&unit);
   // CollectBlockImmediate(&unit); 
    unsigned short* pBuf = (unsigned short*) const_cast<unsigned char*>(img_.GetPixels());
-	for (int k=0; k<img_.Height(); k++)
-{ 
-	int retryCount =0;
-	int ret = DEVICE_ERR;			 
-  	while(ret != DEVICE_OK && retryCount++ < WAIT_FOR_TRIGGER_FAIL_COUNT){
-		ret = picoRunBlock(&unit,sampleOffset_,cameraCCDXSize_,PICO_RUM_TIME_OUT);
-		//
-	}
-	if(ret != DEVICE_OK)
-		return DEVICE_SNAP_IMAGE_FAILED;
-   //void* pBuf = const_cast<void*>((void*)buffers);
-   //img_.SetPixels(pBuf);
- //     MMThreadGuard g(imgPixelsLock_);
-
+	for (unsigned long k=0; k<img_.Height(); k++)
+{ 		
+	unsigned long j=0;
      try
 	{
-		  for (int j=0; j<img_.Width(); j++)
+		int retryCount =0;
+		int ret = DEVICE_ERR;
+		unsigned long sampleCaptured=0;
+  		while(ret != DEVICE_OK && retryCount++ < WAIT_FOR_TRIGGER_FAIL_COUNT){
+			
+			ret = picoRunBlock(&unit,sampleOffset_,cameraCCDXSize_,PICO_RUM_TIME_OUT, &sampleCaptured);
+			//
+		}
+		if(ret != DEVICE_OK || sampleCaptured<0)
+			return DEVICE_SNAP_IMAGE_FAILED;
+
+	   //void* pBuf = const_cast<void*>((void*)buffers);
+	   //img_.SetPixels(pBuf);
+	     MMThreadGuard g(imgPixelsLock_);
+		  for (j=0; j<sampleCaptured; j++)
 		  {
 				long lIndex = img_.Width()*k + j;
 				*(pBuf + lIndex) = (unsigned short)(32768+buffers[0][j]);
@@ -508,6 +511,7 @@ int CEVA_NDE_PicoCamera::SnapImage()
 	 catch(...)
 	{
 		 LogMessage("memory overflow!", false);
+		 return DEVICE_OUT_OF_MEMORY;
 	}
    //GenerateSyntheticImage(img_, exp);
  }
@@ -916,15 +920,13 @@ int CEVA_NDE_PicoCamera::ThreadRun (MM::MMTime startTime)
 
    int ret=DEVICE_ERR;
    
- SnapImage();
+   ret = SnapImage();
 
-   ret = InsertImage();
-     
-
-   while (((double) (this->GetCurrentMMTime() - startTime).getMsec() / imageCounter_) < this->GetSequenceExposure())
+   if (ret != DEVICE_OK)
    {
-      CDeviceUtils::SleepMs(1);
+      return ret;
    }
+   ret = InsertImage();
 
    if (ret != DEVICE_OK)
    {

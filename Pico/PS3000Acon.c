@@ -46,7 +46,7 @@ int cycles = 0;
 #define QUAD_SCOPE		4
 #define DUAL_SCOPE		2
 
-	short * buffers[PS3000A_MAX_CHANNEL_BUFFERS];
+	short * buffers[1];
 	short * digiBuffer[PS3000A_MAX_DIGITAL_PORTS];
 
 /****************************************************************************
@@ -1064,7 +1064,7 @@ void picoInitBlock(UNIT * unit)
 	}
 
 }
-PICO_STATUS picoRunBlock(UNIT *unit,long sampleOffset_,long sampleLength_,unsigned long timeout)
+PICO_STATUS picoRunBlock(UNIT *unit,long sampleOffset_,long sampleLength_,unsigned long timeout,unsigned long *sampleCountRet)
 {
 	int i, j;
 	//long timeInterval;
@@ -1073,12 +1073,13 @@ PICO_STATUS picoRunBlock(UNIT *unit,long sampleOffset_,long sampleLength_,unsign
 
 	long timeIndisposed;
 	unsigned long count=0;
-	long sampleCount = sampleOffset_ + sampleLength_;
+	unsigned long sampleCount = sampleOffset_ + sampleLength_;
 	PICO_STATUS status;
 	short retry;
 		/* Start it collecting, then wait for completion*/
 	g_ready = FALSE;
 	
+
 	//if(sampleCount_ != sampleCount){
 	//	sampleCount_ = sampleCount;
 	//	picoInitBlock(unit);
@@ -1115,7 +1116,7 @@ PICO_STATUS picoRunBlock(UNIT *unit,long sampleOffset_,long sampleLength_,unsign
 	
 	if(g_ready) 
 	{
-		if((status = ps3000aGetValues(unit->handle, sampleOffset_, (unsigned long*) &sampleCount, 1, PS3000A_RATIO_MODE_NONE, 0, NULL)) != PICO_OK)
+		if((status = ps3000aGetValues(unit->handle, sampleOffset_,  &sampleCount, 1, PS3000A_RATIO_MODE_NONE, 0, NULL)) != PICO_OK)
 		{
 			if(status == PICO_POWER_SUPPLY_CONNECTED || status == PICO_POWER_SUPPLY_NOT_CONNECTED || status == PICO_POWER_SUPPLY_UNDERVOLTAGE)
 			{
@@ -1129,7 +1130,7 @@ PICO_STATUS picoRunBlock(UNIT *unit,long sampleOffset_,long sampleLength_,unsign
 		}
 		else
 		{
-				sampleCount = min(sampleCount, BUFFER_SIZE);
+				*sampleCountRet = min(sampleCount, BUFFER_SIZE);
 
 				/*fopen_s(&fp, BlockFile, "w");
 				if (fp != NULL)
