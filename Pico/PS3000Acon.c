@@ -994,8 +994,38 @@ void CollectBlockEts(UNIT * unit)
 	status = ps3000aSetEts(unit->handle, PS3000A_ETS_OFF, 0, 0, &ets_sampletime);
 }
 
+/****************************************************************************
+* Select input voltage ranges for channels
+****************************************************************************/
+void picoSetVoltages(UNIT * unit,short rangeSet)
+{
+	int ch;
+
+    for (ch = 0; ch < unit->channelCount; ch++) 
+	{
+		if (rangeSet >= unit->firstRange && rangeSet <= unit->lastRange)
+			unit->channelSettings[ch].range = rangeSet;
+		else
+			unit->channelSettings[ch].range = unit->lastRange;
+	}
+	SetDefaults(unit);	// Put these changes into effect
+}
+
 long timeInterval;
 
+void picoSetTimebase(UNIT *unit,unsigned long timebase_)
+{
+	
+	long maxSamples;
+	timebase = timebase_;
+	while (ps3000aGetTimebase(unit->handle, timebase, BUFFER_SIZE, &timeInterval, 1, &maxSamples, 0))
+	{
+		timebase++;  // Increase timebase if the one specified can't be used. 
+	}
+
+    //printf("Timebase used %lu = %ldns Sample Interval\n", timebase, timeInterval);
+	//oversample = TRUE;
+}
 void picoInitBlock(UNIT * unit)
 {
 	long maxSamples;

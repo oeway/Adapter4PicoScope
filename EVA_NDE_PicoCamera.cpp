@@ -317,8 +317,6 @@ int CEVA_NDE_PicoCamera::Initialize()
    nRet = CreateProperty(MM::g_Keyword_Exposure, "10.0", MM::Float, false);
    assert(nRet == DEVICE_OK);
    SetPropertyLimits(MM::g_Keyword_Exposure, 0, 10000);
-
-
       // sample offset
    pAct = new CPropertyAction (this, &CEVA_NDE_PicoCamera::OnSampleOffset);
    nRet = CreateProperty("SampleOffset", "0.0", MM::Integer, false, pAct);
@@ -331,6 +329,18 @@ int CEVA_NDE_PicoCamera::Initialize()
    assert(nRet == DEVICE_OK);
    //SetPropertyLimits("SampleLength", 0, MAX_SAMPLE_LENGTH);
 
+      //timebase
+   pAct = new CPropertyAction (this, &CEVA_NDE_PicoCamera::OnTimebase);
+   nRet = CreateProperty("Timebase", "10", MM::Integer, false, pAct);
+   assert(nRet == DEVICE_OK);
+
+    //timeInterval
+   pAct = new CPropertyAction (this, &CEVA_NDE_PicoCamera::OnTimeInterval);
+   nRet = CreateProperty("TimeInterval(ns)", "0", MM::Integer, true, pAct);
+   assert(nRet == DEVICE_OK);
+
+
+   //SetPropertyLimits("SampleLength", 0, MAX_SAMPLE_LENGTH);
 	CPropertyActionEx *pActX = 0;
 	// create an extended (i.e. array) properties 1 through 4
 
@@ -435,6 +445,21 @@ int CEVA_NDE_PicoCamera::Initialize()
 	picoInitBlock(&unit);
    // initialize image buffer
    GenerateEmptyImage(img_);
+
+
+   pAct = new CPropertyAction (this, &CEVA_NDE_PicoCamera::OnInputRange);
+   CreateProperty("InputRange", "0", MM::Integer, false, pAct);
+   //add input range
+   	for (int i = unit.firstRange; i <= unit.lastRange; i++) 
+	{
+		AddAllowedValue("InputRange",  CDeviceUtils::ConvertToString(inputRanges[i]));
+	}
+
+
+
+
+
+
 
   initialized_ = true;
    return DEVICE_OK;
@@ -1398,7 +1423,39 @@ int CEVA_NDE_PicoCamera::OnScanMode(MM::PropertyBase* pProp, MM::ActionType eAct
    return DEVICE_OK;
 }
 
+/**
+* Handles "Input Range" property.
+*/
+int CEVA_NDE_PicoCamera::OnInputRange(MM::PropertyBase* pProp, MM::ActionType eAct)
+{
+   EVA_NDE_PicoHub* pHub = static_cast<EVA_NDE_PicoHub*>(GetParentHub());
+   if (pHub && pHub->GenerateRandomError())
+      return SIMULATED_ERROR;
 
+   if (eAct == MM::AfterSet)
+   {
+	  long value;
+      pProp->Get(value);
+		if ( (value < 1) || (MAX_SAMPLE_LENGTH < value))
+			return DEVICE_ERR;  // invalid image size
+		int indexFound = -1;
+		for (int i = unit.firstRange; i <= unit.lastRange; i++) 
+		{
+			 if(value==inputRanges[i])
+			 {
+				 indexFound = i;
+			 }
+		}
+		if(indexFound>0)
+			picoSetVoltages(&unit,indexFound);
+   }
+   else if (eAct == MM::BeforeGet)
+   {
+	   pProp->Set((long)inputRanges[unit.channelSettings[0].range]);
+   }
+
+   return DEVICE_OK;
+}
 /**
 * Handles "SampleLength" property.
 */
@@ -1428,6 +1485,43 @@ int CEVA_NDE_PicoCamera::OnSampleLength(MM::PropertyBase* pProp, MM::ActionType 
    return DEVICE_OK;
 }
 
+/**
+* Handles "Timebase" property.
+*/
+int CEVA_NDE_PicoCamera::OnTimebase(MM::PropertyBase* pProp, MM::ActionType eAct)
+{
+   EVA_NDE_PicoHub* pHub = static_cast<EVA_NDE_PicoHub*>(GetParentHub());
+   if (pHub && pHub->GenerateRandomError())
+      return SIMULATED_ERROR;
+
+   if (eAct == MM::AfterSet)
+   {
+	  long value;
+      pProp->Get(value);
+	  picoSetTimebase(&unit,value);
+   }
+   else if (eAct == MM::BeforeGet)
+   {
+	pProp->Set((long)timebase);
+   }
+
+   return DEVICE_OK;
+}
+/**
+* Handles "TimeInterval" property.
+*/
+int CEVA_NDE_PicoCamera::OnTimeInterval(MM::PropertyBase* pProp, MM::ActionType eAct)
+{
+   EVA_NDE_PicoHub* pHub = static_cast<EVA_NDE_PicoHub*>(GetParentHub());
+   if (pHub && pHub->GenerateRandomError())
+      return SIMULATED_ERROR;
+   else if (eAct == MM::BeforeGet)
+   {
+	pProp->Set((long)timeInterval);
+   }
+
+   return DEVICE_OK;
+}
 /**
 * Handles "SampleOffset" property.
 */

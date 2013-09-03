@@ -201,7 +201,10 @@ public:
    //-----oe-------
    int OnSampleOffset(MM::PropertyBase* pProp, MM::ActionType eAct);
    int OnSampleLength(MM::PropertyBase* pProp, MM::ActionType eAct);
+   int OnTimebase(MM::PropertyBase* pProp, MM::ActionType eAct);
+   int OnTimeInterval(MM::PropertyBase* pProp, MM::ActionType eAct);
    int OnRowCount(MM::PropertyBase* pProp, MM::ActionType eAct);
+   int OnInputRange(MM::PropertyBase* pProp, MM::ActionType eAct);
 private:
    int SetAllowedBinning();
    void TestResourceLocking(const bool);
