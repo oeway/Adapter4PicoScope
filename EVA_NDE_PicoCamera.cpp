@@ -336,7 +336,7 @@ int CEVA_NDE_PicoCamera::Initialize()
 
     //timeInterval
    pAct = new CPropertyAction (this, &CEVA_NDE_PicoCamera::OnTimeInterval);
-   nRet = CreateProperty("TimeInterval(ns)", "0", MM::Integer, true, pAct);
+   nRet = CreateProperty("TimeIntervalNs", "0", MM::Integer, true, pAct);
    assert(nRet == DEVICE_OK);
 
 
